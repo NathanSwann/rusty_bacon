@@ -82,6 +82,32 @@ impl TryFrom<BqnValue> for Vec<f64> {
     }
 }
 
+impl TryFrom<BqnValue> for String {
+    type Error = BQNCastError;
+
+    fn try_from(value: BqnValue) -> Result<Self, Self::Error> {
+        if unsafe { bindings::bqn_type(value.0) } != 0 {
+            println!("ERROR INVALID Not a vec");
+            return Err(BQNCastError {});
+        }
+        let arry_type = unsafe { bindings::bqn_directArrType(value.0) };
+        if let bindings::BQNElType_elt_c8
+        | bindings::BQNElType_elt_c16
+        | bindings::BQNElType_elt_c32 = arry_type
+        {
+        } else {
+            println!("ERROR INVALID Type type was {:?}", unsafe {
+                bindings::bqn_directArrType(value.0)
+            });
+            return Err(BQNCastError {});
+        }
+        let r: usize = unsafe { bindings::bqn_bound(value.0) };
+        let mut nv: Vec<u8> = vec![0; r];
+        unsafe { bindings::bqn_readC8Arr(value.0, nv.as_mut_slice().as_mut_ptr()) }
+        Ok(String::from_utf8(nv).expect("unable to read string"))
+    }
+}
+
 pub fn call_bqn_1(f: BqnValue, x: BqnValue) -> BqnValue {
     BqnValue(unsafe { bindings::bqn_call1(f.0, x.0) })
 }
